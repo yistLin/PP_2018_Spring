@@ -12,12 +12,19 @@ static inline __m256i encrypt(__m256i m, uint32_t key) {
     return _mm256_xor_si256(_mm256_add_epi32(rotate_left(m, key & 31), _mm256_set1_epi32(key)), _mm256_set1_epi32(key));
 }
 
+static inline uint32_t ori_rotate_left(uint32_t x, uint32_t n) {
+    return (x << n) | (x >> (32-n));
+}
+
+static inline uint32_t ori_encrypt(uint32_t m, uint32_t key) {
+    return (ori_rotate_left(m, key & 31) + key)^key;
+}
+
 static uint32_t f(int N, int off, uint32_t key1, uint32_t key2) {
     uint32_t sum = 0;
     int i = 0, j = off;
     __m256i vec_a, vec_b, vec_c = _mm256_setzero_si256();
-    for (; i < N; i+=8, j+=8) {
-        // sum += encrypt(j, key1) * encrypt(j, key2);
+    for (; i+8 <= N; i+=8, j+=8) {
         vec_a = _mm256_setr_epi32(j, j+1, j+2, j+3, j+4, j+5, j+6, j+7);
         vec_b = _mm256_mullo_epi32(encrypt(vec_a, key1), encrypt(vec_a, key2));
         vec_c = _mm256_add_epi32(vec_c, vec_b);
@@ -27,12 +34,9 @@ static uint32_t f(int N, int off, uint32_t key1, uint32_t key2) {
         sum += res[k];
 
     if (N % 8 != 0) {
-        j -= 8;
-        vec_a = _mm256_setr_epi32(j, j+1, j+2, j+3, j+4, j+5, j+6, j+7);
-        vec_b = _mm256_mullo_epi32(encrypt(vec_a, key1), encrypt(vec_a, key2));
-        res = (uint32_t*)&vec_b;
-        for (int k = 0; k < (N % 8); k++)
-            sum += res[k];
+        for (; i < N; i++, j++) {
+            sum += ori_encrypt(j, key1) * ori_encrypt(j, key2);
+        }
     }
     return sum;
 }
