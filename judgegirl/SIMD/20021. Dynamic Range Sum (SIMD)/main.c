@@ -49,7 +49,7 @@ static void tick(int N, int R, int32_t x[], int32_t y[], int32_t w[]) {
 int main() {
     p_srand(0);
     static int32_t x[MAXN], y[MAXN], w[MAXN];
-    int N = 10000, M = 50000, R = 100;
+    int N = 100000, M = 5000, R = 100;
 
     init(N, R, x, y, w);
 
