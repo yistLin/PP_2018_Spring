@@ -7,20 +7,22 @@
  
 #define MAXN 10000005
 #define MAX_THREAD 2
-uint32_t prefix_sum[MAXN];
 
 // my define
 typedef struct {
-    int h, l;
+    int n, tid;
     uint32_t key;
 } SeriesArg;
 SeriesArg arg[MAX_THREAD];
-uint32_t enc_res[MAXN];
+uint32_t *enc_res[MAX_THREAD];
 
 void *encrypt_series(void *void_ptr) {
     SeriesArg* arg = (SeriesArg*)void_ptr;
-    for (int i = arg->l; i < arg->h; i++) {
-        enc_res[i] = encrypt(i, arg->key);
+    int n = arg->n, tid = arg->tid;
+    uint32_t key = arg->key, sum = 0;
+    for (int i = 1; i <= n; i++) {
+        sum += encrypt(i, key);
+        enc_res[tid][i] = sum;
     }
     return NULL;
 }
@@ -29,29 +31,38 @@ int main() {
     int n;
     uint32_t key;
     pthread_t tid[MAX_THREAD];
+    int opened_thread = 0;
+    for (int i = 0; i < MAX_THREAD; i++) {
+        enc_res[i] = (uint32_t*)malloc(sizeof(uint32_t) * MAXN);
+    }
+
     while (scanf("%d %" PRIu32, &n, &key) == 2) {
-        uint32_t sum = 0;
-        for (int i = 0; i < MAX_THREAD; i++) {
-            int l_bnd = ((n+1) / MAX_THREAD) * i + 1,
-                h_bnd = ((n+1) / MAX_THREAD) * (i+1) + 1;
-            if (i == MAX_THREAD - 1)
-                h_bnd = n + 1;
-            arg[i].h = h_bnd;
-            arg[i].l = l_bnd;
-            arg[i].key = key;
-            if (pthread_create(&tid[i], NULL, encrypt_series, &arg[i])) {
-                fprintf(stderr, "Error creating thread\n");
-                return 1;
+        arg[opened_thread].n = n;
+        arg[opened_thread].key = key;
+        arg[opened_thread].tid = opened_thread;
+        if (pthread_create(&tid[opened_thread], NULL, encrypt_series, &arg[opened_thread])) {
+            fprintf(stderr, "Error creating thread\n");
+            return 1;
+        }
+        opened_thread++;
+
+        if (opened_thread == MAX_THREAD) {
+            for (int i = 0; i < MAX_THREAD; i++) {
+                pthread_join(tid[i], NULL);
+                output(enc_res[i], arg[i].n);
             }
+            opened_thread = 0;
         }
-        for (int i = 0; i < MAX_THREAD; i++) {
+    }
+    if (opened_thread != 0) {
+        for (int i = 0; i < opened_thread; i++) {
             pthread_join(tid[i], NULL);
+            output(enc_res[i], arg[i].n);
         }
-        for (int i = 1; i <= n; i++) {
-            sum += enc_res[i];
-            prefix_sum[i] = sum;
-        }
-        output(prefix_sum, n);
+    }
+
+    for (int i = 0; i < MAX_THREAD; i++) {
+        free(enc_res[i]);
     }
     return 0;
 }
