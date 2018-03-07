@@ -22,6 +22,17 @@ static inline int min(x, y) {
     return (x < y) ? x : y;
 }
 
+void trans(int N, unsigned long A[][2048]) {
+    unsigned long x;
+    for (int i = 0; i < N; i++) {
+        for (int j = i+1; j < N; j++) {
+            x = A[i][j];
+            A[i][j] = A[j][i];
+            A[j][i] = x;
+        }
+    }
+}
+
 void *subtask(void *void_ptr) {
     Argu* arg = (Argu*)void_ptr;
     int N = arg->N, l = arg->l, r = arg->r;
@@ -30,15 +41,14 @@ void *subtask(void *void_ptr) {
         for (int j = 0; j < N; j++) {
             unsigned long sum = 0;
             for (int k = 0; k < N; k++)
-                sum += *(a_d1_ptr[i]+k) * *(b_d1_ptr[k]+j);
+                sum += *(a_d1_ptr[i]+k) * *(b_d1_ptr[j]+k);
             *(c_d1_ptr[i]+j) = sum;
         }
     }
 }
 
 void multiply(int N, unsigned long A[][2048], unsigned long B[][2048], unsigned long C[][2048]) {
-    pthread_t tid[MAX_THREAD];
-    Argu *arg_ptr;
+    trans(N, B);
     for (int i = 0; i < N; i++) {
         a_d1_ptr[i] = &A[i][0];
         b_d1_ptr[i] = &B[i][0];
@@ -46,6 +56,8 @@ void multiply(int N, unsigned long A[][2048], unsigned long B[][2048], unsigned 
     }
     int blk = (N + MAX_THREAD - 1) / MAX_THREAD;
 
+    pthread_t tid[MAX_THREAD];
+    Argu *arg_ptr;
     for (int i = 0; i < MAX_THREAD; i++) {
         arg_ptr = &args[i];
         arg_ptr->l = i * blk;
@@ -57,4 +69,5 @@ void multiply(int N, unsigned long A[][2048], unsigned long B[][2048], unsigned 
     }
     for (int j = 0; j < MAX_THREAD; j++)
         pthread_join(tid[j], NULL);
+    // trans(N, C);
 }
