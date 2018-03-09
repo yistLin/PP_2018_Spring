@@ -1,5 +1,5 @@
 #include <stdio.h>
-// #include <omp.h>
+#include <omp.h>
 
 #define MAXN 20
 
@@ -36,8 +36,17 @@ int solve(int row, int state[MAXN]) {
 }
 
 int solve_n_queens() {
-    int state[MAXN];
-    return solve(0, state);
+    int nb_answers = 0;
+
+    #pragma omp parallel for
+    for (int i = 0; i < N; i++) {
+        if (board[0][i] == '*')
+            continue;
+        int state[MAXN];
+        state[0] = i;
+        nb_answers += solve(1, state);
+    }
+    return nb_answers;
 }
 
 int main(int argc, char* argv[]) {
