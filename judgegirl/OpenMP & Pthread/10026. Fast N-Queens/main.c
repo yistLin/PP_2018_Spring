@@ -6,6 +6,8 @@
 int N = 0;
 char board[MAXN][MAXN];
 
+omp_lock_t writelock;
+
 int solve(int row, int state[MAXN]) {
     if (row == N)
         return 1;
@@ -14,7 +16,7 @@ int solve(int row, int state[MAXN]) {
     for (int i = 0; i < N; i++) {
         if (board[row][i] == '*')
             continue;
-        
+
         // detect collisions
         int r = 0;
         for (; r < row; r++) {
@@ -44,13 +46,18 @@ int solve_n_queens() {
             continue;
         int state[MAXN];
         state[0] = i;
-        nb_answers += solve(1, state);
+        int ret = solve(1, state);
+
+        omp_set_lock(&writelock);
+        nb_answers += ret;
+        omp_unset_lock(&writelock);
     }
     return nb_answers;
 }
 
 int main(int argc, char* argv[]) {
     int case_cnt = 0;
+    omp_init_lock(&writelock);
 
     while (scanf("%d", &N) == 1) {
         case_cnt++;
@@ -62,5 +69,7 @@ int main(int argc, char* argv[]) {
         int nb_answers = solve_n_queens();
         printf("Case %d: %d\n", case_cnt, nb_answers);
     }
+
+    omp_destroy_lock(&writelock);
     return 0;
 }
