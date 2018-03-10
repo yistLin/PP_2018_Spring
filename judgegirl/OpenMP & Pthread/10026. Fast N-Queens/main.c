@@ -13,25 +13,25 @@ int solve(int row, int state[MAXN]) {
         return 1;
 
     int nb_answers = 0;
+    int candi[MAXN];
+    for (int i = 0; i < N; i++)
+        candi[i] = 1;
+    for (int r = 0; r < row; r++) {
+        candi[state[r]] = 0;
+        int d1 = row - (r - state[r]);
+        if (d1 >= 0 && d1 < N)
+            candi[d1] = 0;
+        int d2 = (r + state[r]) - row;
+        if (d2 >= 0 && d2 < N)
+            candi[d2] = 0;
+    }
     for (int i = 0; i < N; i++) {
         if (board[row][i] == '*')
             continue;
-
-        // detect collisions
-        int r = 0;
-        for (; r < row; r++) {
-            if (state[r] == i)  // column
-                break;
-            if ((r - state[r]) == (row - i))  // diagonal
-                break;
-            if ((r + state[r]) == (row + i))  // inverse diagonal
-                break;
-        }
-
-        if (r == row) {  // no collision with previous queens
-            state[row] = i;
-            nb_answers += solve(row+1, state);
-        }
+        if (candi[i] == 0)
+            continue;
+        state[row] = i;
+        nb_answers += solve(row+1, state);
     }
 
     return nb_answers;
@@ -39,12 +39,12 @@ int solve(int row, int state[MAXN]) {
 
 int solve_n_queens() {
     int nb_answers = 0;
+    int state[MAXN];
 
-    #pragma omp parallel for
+    #pragma omp parallel for private(state)
     for (int i = 0; i < N; i++) {
         if (board[0][i] == '*')
             continue;
-        int state[MAXN];
         state[0] = i;
         int ret = solve(1, state);
 
