@@ -6,7 +6,7 @@
 int N = 0;
 char board[MAXN][MAXN];
 
-int solve(int row, int col[MAXN], int diag[2 * MAXN - 1], int rdiag[2 * MAXN - 1]) {
+int solve(int row, long long int col, long long int diag, long long int rdiag) {
     if (row == N)
         return 1;
 
@@ -15,10 +15,16 @@ int solve(int row, int col[MAXN], int diag[2 * MAXN - 1], int rdiag[2 * MAXN - 1
         if (board[row][i] == '*')
             continue;
         int j = i - row + N - 1, k = row + i;
-        if (col[i] && diag[j] && rdiag[k]) {
-            col[i] = diag[j] = rdiag[k] = 0;
+        if ((col & (1L << i)) &&
+            (diag & (1L << j)) &&
+            (rdiag & (1L << k))) {
+            col ^= (1L << i);
+            diag ^= (1L << j);
+            rdiag ^= (1L << k);
             nb_answers += solve(row+1, col, diag, rdiag);
-            col[i] = diag[j] = rdiag[k] = 1;
+            col ^= (1L << i);
+            diag ^= (1L << j);
+            rdiag ^= (1L << k);
         }
     }
 
@@ -27,19 +33,21 @@ int solve(int row, int col[MAXN], int diag[2 * MAXN - 1], int rdiag[2 * MAXN - 1
 
 int solve_n_queens() {
     int nb_answers = 0;
-    int col[MAXN], diag[2 * MAXN - 1], rdiag[2 * MAXN - 1];
-    for (int i = 0; i < MAXN; i++)
-        col[i] = 1;
-    for (int i = 0; i < (2 * MAXN - 1); i++)
-        diag[i] = rdiag[i] = 1;
+    long long int col, diag, rdiag;
+    col = diag = rdiag = -1L;
 
     #pragma omp parallel for firstprivate(col, diag, rdiag)
     for (int i = 0; i < N; i++) {
         if (board[0][i] == '*')
             continue;
         int j = i - 0 + N - 1, k = 0 + i;
-        col[i] = diag[j] = rdiag[k] = 0;
+        col ^= (1L << i);
+        diag ^= (1L << j);
+        rdiag ^= (1L << k);
         int ret = solve(1, col, diag, rdiag);
+        col ^= (1L << i);
+        diag ^= (1L << j);
+        rdiag ^= (1L << k);
 
         #pragma omp atomic
         nb_answers += ret;
