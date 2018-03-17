@@ -6,48 +6,74 @@
 int N = 0;
 char board[MAXN][MAXN];
 
-int solve(int row, long long int col, long long int diag, long long int rdiag) {
-    if (row == N)
-        return 1;
-
-    int nb_answers = 0;
-    for (int i = 0; i < N; i++) {
-        if (board[row][i] == '*')
-            continue;
-        int j = i - row + N - 1, k = row + i;
-        if ((col & (1L << i)) &&
-            (diag & (1L << j)) &&
-            (rdiag & (1L << k))) {
-            col ^= (1L << i);
-            diag ^= (1L << j);
-            rdiag ^= (1L << k);
-            nb_answers += solve(row+1, col, diag, rdiag);
-            col ^= (1L << i);
-            diag ^= (1L << j);
-            rdiag ^= (1L << k);
-        }
-    }
-
-    return nb_answers;
-}
-
 int solve_n_queens() {
     int nb_answers = 0;
-    long long int col, diag, rdiag;
-    col = diag = rdiag = -1L;
 
-    #pragma omp parallel for firstprivate(col, diag, rdiag)
-    for (int i = 0; i < N; i++) {
+    #pragma omp parallel for
+    for (int tid = 0; tid < N; tid++) {
+        int iptrs[MAXN];
+        long long int cols[MAXN], diags[MAXN], rdiags[MAXN];
+
+        int row, i, j, k;
+        long long int col, diag, rdiag;
+        int ret = 0;
+
+        int sptr = 1;
+        i = tid;
+        j = i + N - 1;
+        k = i;
         if (board[0][i] == '*')
             continue;
-        int j = i - 0 + N - 1, k = 0 + i;
-        col ^= (1L << i);
-        diag ^= (1L << j);
-        rdiag ^= (1L << k);
-        int ret = solve(1, col, diag, rdiag);
-        col ^= (1L << i);
-        diag ^= (1L << j);
-        rdiag ^= (1L << k);
+        iptrs[1] = 0;
+        cols[1] = -1L ^ (1L << i);
+        diags[1] = -1L ^ (1L << j);
+        rdiags[1] = -1L ^ (1L << k);
+
+        while (1) {
+            if (sptr < 1)
+                break;
+
+            row = sptr;
+            if (row == N) {
+                ret++;
+                sptr--;
+                continue;
+            }
+
+            i = iptrs[sptr];
+            j = i - row + N - 1;
+            k = row + i;
+            col = cols[sptr];
+            diag = diags[sptr];
+            rdiag = rdiags[sptr];
+
+            while (i < N) {
+                if (board[row][i] != '*' &&
+                    (col & (1L << i)) &&
+                    (diag & (1L << j)) &&
+                    (rdiag & (1L << k))) {
+                    col ^= (1L << i);
+                    diag ^= (1L << j);
+                    rdiag ^= (1L << k);
+
+                    iptrs[sptr] = i+1;
+
+                    sptr++;
+                    iptrs[sptr] = 0;
+                    cols[sptr] = col;
+                    diags[sptr] = diag;
+                    rdiags[sptr] = rdiag;
+                    break;
+                }
+                i++;
+                j = i - row + N - 1;
+                k = row + i;
+            }
+
+            if (i == N) {
+                sptr--;
+            }
+        }
 
         #pragma omp atomic
         nb_answers += ret;
