@@ -1,18 +1,19 @@
 #include <stdio.h>
 #include <string.h>
-#include <stdbool.h>
 #include <omp.h>
 
 #define MAXN 2000+5
 #define MAXM 1000
 
 int main(int argc, char* argv[]) {
+    omp_set_num_threads(4);
+
     int N, M, turns = 0, next_turns, nachbarn;
     char c;
-    bool board[2][MAXN][MAXN];
+    char board[2][MAXN][MAXN];
 
     // clear board
-    memset(board, 0, sizeof(bool) * 2 * MAXN * MAXN);
+    memset(board, 0, sizeof(char) * 2 * MAXN * MAXN);
 
     // input N, M
     scanf("%d %d", &N, &M);
@@ -26,14 +27,16 @@ int main(int argc, char* argv[]) {
         }
 
     // simulations
-    int nb_thread = 20, blk = (N + nb_thread - 1) / nb_thread, lblk, rblk;
+    int nb_thread = 4, blk = (N + nb_thread - 1) / nb_thread, lblk, rblk;
     for (int times = 0; times < M; times++) {
         next_turns = (turns + 1) % 2;
-        #pragma omp parallel for
-        for (int b = 0; b < nb_thread; b++) {
-            lblk = blk * b + 1;
-            rblk = ((blk * (b+1) + 1) < N) ? (blk * (b+1) + 1) : N;
-            for (int i = lblk; i <= rblk; i++) {
+        // #pragma omp parallel for
+        // for (int b = 0; b < nb_thread; b++) {
+        //     lblk = blk * b + 1;
+        //     rblk = ((blk * (b+1) + 1) < N) ? (blk * (b+1) + 1) : N;
+            #pragma omp parallel for
+            for (int i = 1; i <= N; i++) {
+            // for (int i = lblk; i < rblk; i++) {
                 for (int j = 1; j <= N; j++) {
                     nachbarn = board[turns][i-1][j-1] + board[turns][i-1][j] +
                                board[turns][i-1][j+1] + board[turns][i][j-1] +
@@ -55,7 +58,7 @@ int main(int argc, char* argv[]) {
                     }
                 }
             }
-        }
+        // }
         turns = next_turns;
     }
 
