@@ -2,15 +2,14 @@
 #include <string.h>
 #include <omp.h>
 
-#define MAXN 2000+5
+#define MAXN (2000+5)
 #define MAXM 1000
 
-int main(int argc, char* argv[]) {
-    // omp_set_num_threads(4);
+char board[2][MAXN][MAXN];
 
+int main(int argc, char* argv[]) {
     int N, M, turns = 0, next_turns;
     char c;
-    char board[2][MAXN][MAXN];
 
     // clear board
     memset(board, 0, sizeof(char) * 2 * MAXN * MAXN);
@@ -27,7 +26,6 @@ int main(int argc, char* argv[]) {
         }
 
     // simulations
-    int nb_thread = 4, blk = (N + nb_thread - 1) / nb_thread, lblk, rblk;
     for (int times = 0; times < M; times++) {
         next_turns = (turns + 1) % 2;
         #pragma omp parallel for
