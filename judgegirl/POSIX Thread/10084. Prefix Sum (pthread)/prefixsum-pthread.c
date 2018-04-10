@@ -1,68 +1,111 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <assert.h>
 #include <inttypes.h>
 #include <pthread.h>
 #include "utils.h"
- 
+
 #define MAXN 10000005
-#define MAX_THREAD 2
+#define MAX_THREAD 6
 
-// my define
-typedef struct {
-    int n, tid;
-    uint32_t key;
-} SeriesArg;
-SeriesArg arg[MAX_THREAD];
-uint32_t *enc_res[MAX_THREAD];
+#define MIN(X, Y) ((X) < (Y) ? (X) : (Y))
 
-void *encrypt_series(void *void_ptr) {
-    SeriesArg* arg = (SeriesArg*)void_ptr;
-    int n = arg->n, tid = arg->tid;
-    uint32_t key = arg->key, sum = 0;
-    for (int i = 1; i <= n; i++) {
-        sum += encrypt(i, key);
-        enc_res[tid][i] = sum;
-    }
-    return NULL;
+int boundaries[MAX_THREAD+1], nb_threads, n;
+uint32_t key, prefix_sum[MAXN];
+
+void *sum_partial_prefix(void *arg) {
+    int idx = *((int *)arg);
+    int left = boundaries[idx], right = boundaries[idx+1];
+
+    prefix_sum[left] = encrypt(left, key);
+    for (int i = left+1; i < right; i++)
+        prefix_sum[i] = prefix_sum[i-1] + encrypt(i, key);
+
+    pthread_exit(NULL);
+}
+
+void *sum_prefix(void *arg) {
+    int idx = *((int *)arg);
+    int left = boundaries[idx], right = boundaries[idx+1];
+    int psum = prefix_sum[left-1];
+
+    for (int i = left; i < right-1; i++)
+        prefix_sum[i] += psum;
+
+    pthread_exit(NULL);
 }
 
 int main() {
-    int n;
-    uint32_t key;
-    pthread_t tid[MAX_THREAD];
-    int opened_thread = 0;
-    for (int i = 0; i < MAX_THREAD; i++) {
-        enc_res[i] = (uint32_t*)malloc(sizeof(uint32_t) * MAXN);
-    }
+    pthread_t tids[MAX_THREAD];
+    int idx[MAX_THREAD];
 
     while (scanf("%d %" PRIu32, &n, &key) == 2) {
-        arg[opened_thread].n = n;
-        arg[opened_thread].key = key;
-        arg[opened_thread].tid = opened_thread;
-        if (pthread_create(&tid[opened_thread], NULL, encrypt_series, &arg[opened_thread])) {
-            fprintf(stderr, "Error creating thread\n");
-            return 1;
-        }
-        opened_thread++;
+        // determine number of threads
+        if (n < MAX_THREAD)
+            nb_threads = n;
+        else
+            nb_threads = MAX_THREAD;
 
-        if (opened_thread == MAX_THREAD) {
-            for (int i = 0; i < MAX_THREAD; i++) {
-                pthread_join(tid[i], NULL);
-                output(enc_res[i], arg[i].n);
-            }
-            opened_thread = 0;
+        // slice the data
+        int block_size = (n + nb_threads - 1) / nb_threads;
+        for (int i = 0; i < nb_threads; i++) {
+            boundaries[i] = MIN(i * block_size + 1, n);
         }
-    }
-    if (opened_thread != 0) {
-        for (int i = 0; i < opened_thread; i++) {
-            pthread_join(tid[i], NULL);
-            output(enc_res[i], arg[i].n);
+        boundaries[nb_threads] = n + 1;
+
+#ifdef DEBUG
+        printf("boundaries:");
+        for (int i = 0; i < nb_threads+1; i++)
+            printf(" %d", boundaries[i]);
+        printf("\n");
+#endif
+
+        // sum partial prefix
+        for (int i = 0; i < nb_threads; i++) {
+            idx[i] = i;
+            int rc = pthread_create(&tids[i], NULL, sum_partial_prefix, (void *)&idx[i]);
+            assert(rc == 0);
         }
+        for (int i = 0; i < nb_threads; i++)
+            pthread_join(tids[i], NULL);
+
+#ifdef DEBUG
+        printf("sum partial prefix:");
+        for (int i = 1; i <= n; i++)
+            printf(" %" PRIu32, prefix_sum[i]);
+        printf("\n");
+#endif
+
+        // accumulate partial sum
+        for (int i = 1; i < nb_threads; i++) {
+            prefix_sum[boundaries[i+1]-1] += prefix_sum[boundaries[i]-1];
+        }
+
+#ifdef DEBUG
+        printf("accumulate partial sum:");
+        for (int i = 1; i <= n; i++)
+            printf(" %" PRIu32, prefix_sum[i]);
+        printf("\n");
+#endif
+
+        // calc prefix sum
+        for (int i = 1; i < nb_threads; i++) {
+            int rc = pthread_create(&tids[i], NULL, sum_prefix, (void *)&idx[i]);
+            assert(rc == 0);
+        }
+        for (int i = 1; i < nb_threads; i++)
+            pthread_join(tids[i], NULL);
+
+#ifdef DEBUG
+        printf("sum prefix:");
+        for (int i = 1; i <= n; i++)
+            printf(" %" PRIu32, prefix_sum[i]);
+        printf("\n");
+#endif
+
+        output(prefix_sum, n);
     }
 
-    for (int i = 0; i < MAX_THREAD; i++) {
-        free(enc_res[i]);
-    }
     return 0;
 }
