@@ -64,10 +64,6 @@ int main() {
             }
         }
 
-        // for (int i = 1; i <= n; i++)
-        //     printf(" %" PRIu32, prefix_sum[i]);
-        // printf("\n");
-
         output(prefix_sum, n);
     }
 
