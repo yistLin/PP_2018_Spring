@@ -2,20 +2,20 @@
 
 #define MAXN 20
 
-char board[MAXN][MAXN];
+unsigned board[MAXN];
 
-int solve(int N, int row, long long int col, long long int diag, long long int rdiag) {
+int solve(int N, int row, unsigned col, unsigned diag, unsigned rdiag) {
     if (row == N)
         return 1;
 
     int nb_answers = 0;
-    int j = 0 - row + N - 1, k = row + 0;
-    long long int pos = col & (diag >> j) & (rdiag >> k);
-    for (int i = 0; i < N; i++) {
-        if (board[row][i] == '*')
-            continue;
-        if (pos & (1L << i))
-            nb_answers += solve(N, row+1, col ^ (1L << i), diag ^ (1L << (j+i)), rdiag ^ (1L << (k+i)));
+    unsigned pos = board[row] | col | diag | rdiag, setbit = 1;
+    for (int i = 0; i < N; i++, setbit <<= 1) {
+        if (~pos & setbit)
+            nb_answers += solve(N, row+1,
+                                col | setbit,
+                                (diag | setbit) >> 1,
+                                (rdiag | setbit) << 1);
     }
 
     return nb_answers;
@@ -23,38 +23,31 @@ int solve(int N, int row, long long int col, long long int diag, long long int r
 
 int main(int argc, char* argv[]) {
     int N, case_cnt = 0;
+    char str[MAXN+5];
 
     while (scanf("%d", &N) == 1) {
         case_cnt++;
 
         // input
-        for (int i = 0; i < N; i++)
+        for (int i = 0; i < N; i++) {
+            board[i] = 0;
+            scanf("%s", str);
             for (int j = 0; j < N; j++)
-                scanf(" %c", &board[i][j]);
+                if (str[j] == '*')
+                    board[i] |= (1 << j);
+        }
 
         int nb_answers = 0;
-        long long int col, diag, rdiag;
-        col = diag = rdiag = -1L;
 
-        // solve
-        #pragma omp parallel for firstprivate(col, diag, rdiag) reduction(+: nb_answers) collapse(2) schedule(dynamic)
+        #pragma omp parallel for reduction(+: nb_answers)
         for (int i = 0; i < N; i++) {
-            for (int j = 0; j < N; j++) {
-                if (board[0][i] == '*' || board[1][j] == '*')
-                    continue;
-
-                int ret = 0;
-                int a = i - 0 + N - 1, b = 0 + i;
-                col ^= (1L << i), diag ^= (1L << a), rdiag ^= (1L << b);
-
-                int c = j - 1 + N - 1, d = 1 + j;
-                if ((col & (1L << j)) &&
-                    (diag & (1L << c)) &&
-                    (rdiag & (1L << d)))
-                    ret = solve(N, 2, col ^ (1L << j), diag ^ (1L << c), rdiag ^ (1L << d));
-
-                col ^= (1L << i), diag ^= (1L << a), rdiag ^= (1L << b);
-
+            unsigned setbit = 1 << i;
+            if (~board[0] & setbit) {
+                unsigned col = 0, diag = 0, rdiag = 0;
+                int ret = solve(N, 1,
+                                col | setbit,
+                                (diag | setbit) >> 1,
+                                (rdiag | setbit) << 1);
                 nb_answers += ret;
             }
         }
