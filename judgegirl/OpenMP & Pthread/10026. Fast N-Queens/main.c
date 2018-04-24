@@ -39,16 +39,21 @@ int main(int argc, char* argv[]) {
 
         int nb_answers = 0;
 
-        #pragma omp parallel for reduction(+: nb_answers)
+        #pragma omp parallel for reduction(+: nb_answers) collapse(2) schedule(dynamic)
         for (int i = 0; i < N; i++) {
-            unsigned setbit = 1 << i;
-            if (~board[0] & setbit) {
-                unsigned col = 0, diag = 0, rdiag = 0;
-                int ret = solve(N, 1,
-                                col | setbit,
-                                (diag | setbit) >> 1,
-                                (rdiag | setbit) << 1);
-                nb_answers += ret;
+            for (int j = 0; j < N; j++) {
+                unsigned setbit = 1 << i, setbit2 = 1 << j;
+                if (~board[0] & setbit && ~board[1] & setbit2) {
+                    unsigned col = setbit, diag = setbit >> 1, rdiag = setbit << 1;
+                    unsigned pos = col | diag | rdiag;
+                    int ret = 0;
+                    if (~pos & setbit2)
+                        ret = solve(N, 2,
+                                    col | setbit2,
+                                    (diag | setbit2) >> 1,
+                                    (rdiag | setbit2) << 1);
+                    nb_answers += ret;
+                }
             }
         }
 
