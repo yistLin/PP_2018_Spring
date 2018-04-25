@@ -1,33 +1,65 @@
 #include <stdio.h>
+#include <string.h>
 
-#define MAXN 1000
+#define MAXN 1005
+#define CLIP(X, Y) ((X) == (Y) ? 0 : (X)) 
 
-typedef struct {
-    int i, j;
-} Elem;
+char grids[2][MAXN][MAXN];
 
-char grids[MAXN][MAXN];
-Elem r_stats[MAXN * MAXN], b_stats[MAXN * MAXN];
+void move_red(const int N) {
+    #pragma omp parallel
+    {
+        #pragma omp for
+        for (int i = 0; i < N; i++) {
+            memcpy((void *)&(grids[1][i][0]), (const void *)&(grids[0][i][0]), N);
+        }
+        #pragma omp for
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j < N; j++) {
+                int jj = CLIP(j+1, N);
+                if (grids[0][i][j] == 'R' && grids[0][i][jj] == 'W') {
+                    grids[1][i][j] = 'W';
+                    grids[1][i][jj] = 'R';
+                }
+            }
+        }
+    }
+}
+
+void move_blue(const int N) {
+    #pragma omp parallel
+    {
+        #pragma omp for
+        for (int i = 0; i < N; i++) {
+            memcpy((void *)&(grids[0][i][0]), (const void *)&(grids[1][i][0]), N);
+        }
+        #pragma omp for
+        for (int i = 0; i < N; i++) {
+            int ii = CLIP(i+1, N);
+            for (int j = 0; j < N; j++) {
+                if (grids[1][i][j] == 'B' && grids[1][ii][j] == 'W') {
+                    grids[0][i][j] = 'W';
+                    grids[0][ii][j] = 'B';
+                }
+            }
+        }
+    }
+}
 
 int main(int argc, char *argv[]) {
     int N, M;
     scanf("%d %d", &N, &M);
 
-    int r_cnt = 0, b_cnt = 0;
     for (int i = 0; i < N; i++)
-        for (int j = 0; j < N; j++) {
-            scanf("%c", &grids[i][j]);
-            if (grids[i][j] == 'R') {
-                r_stats[r_cnt].i = i;
-                r_stats[r_cnt].j = j;
-                r_cnt++;
-            }
-            else if (grids[i][j] == 'B') {
-                b_stats[b_cnt].i = i;
-                b_stats[b_cnt].j = j;
-                b_cnt++;
-            }
-        }
+        scanf("%s", grids[0][i]);
+
+    for (int i = 0; i < M; i++) {
+        move_red(N);
+        move_blue(N);
+    }
+
+    for (int i = 0; i < N; i++)
+        printf("%s\n", grids[0][i]);
 
     return 0;
 }
