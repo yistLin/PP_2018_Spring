@@ -19,10 +19,16 @@ int main() {
     int cur = 0, nxt;
     for (int i = 0; i < N; i++) {
         nxt = 1 - cur;
-        for (int j = M; j >= weights[i]; j--)
-            dp[nxt][j] = MAX(dp[cur][j], dp[cur][j-weights[i]] + values[i]);
-        for (int j = weights[i]-1; j >= 0; j--)
-            dp[nxt][j] = dp[cur][j];
+        #pragma omp parallel
+        {
+            #pragma omp for
+            for (int j = M; j >= weights[i]; j--)
+                dp[nxt][j] = MAX(dp[cur][j], dp[cur][j-weights[i]] + values[i]);
+
+            #pragma omp for
+            for (int j = weights[i]-1; j >= 0; j--)
+                dp[nxt][j] = dp[cur][j];
+        }
         cur = nxt;
     }
 
