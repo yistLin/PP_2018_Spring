@@ -19,12 +19,16 @@ int main() {
             for (int j = 0; j < N-i; j++) {
                 int l = j, r = j+i;
                 long long local = INF;
-                for (int k = l; k < r; k++) {
-                    long long t = dp[l*N+k] + dp[(k+1)*N+r] + SZ[l] * SZ[k+1] * SZ[r+1];
+                long long *h_ptr = dp + l*N+l;
+                long long *v_ptr = dp + r*N+(l+1);
+                long long mul_sz = SZ[l] * SZ[r+1];
+                for (int k = l; k < r; k++, h_ptr++, v_ptr++) {
+                    long long t = *h_ptr + *v_ptr + mul_sz * SZ[k+1];
                     if (t < local)
                         local = t;
                 }
                 dp[l*N+r] = local;
+                dp[r*N+l] = local;
             }
         }
         printf("%lld\n", dp[0*N+N-1]);
