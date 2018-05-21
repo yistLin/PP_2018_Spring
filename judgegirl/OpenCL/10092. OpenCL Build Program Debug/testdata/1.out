@@ -1,0 +1,3 @@
+<kernel>:4:2: error: use of undeclared identifier 'opencl'
+        opencl;
+        ^

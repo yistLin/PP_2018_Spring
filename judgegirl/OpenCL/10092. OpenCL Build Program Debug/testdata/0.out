@@ -1,0 +1,27 @@
+<kernel>:2:39: error: use of undeclared identifier 'MAXN'
+__kernel void mul(__global uint32_t A[MAXN][MAXN], 
+                                      ^
+<kernel>:2:45: error: use of undeclared identifier 'MAXN'
+__kernel void mul(__global uint32_t A[MAXN][MAXN], 
+                                            ^
+<kernel>:2:37: error: parameter may not be qualified with an address space
+__kernel void mul(__global uint32_t A[MAXN][MAXN], 
+                                    ^
+<kernel>:3:25: error: use of undeclared identifier 'MAXN'
+                  __global uint32_t B[MAXN][MAXN], 
+                                      ^
+<kernel>:3:31: error: use of undeclared identifier 'MAXN'
+                  __global uint32_t B[MAXN][MAXN], 
+                                            ^
+<kernel>:3:23: error: parameter may not be qualified with an address space
+                  __global uint32_t B[MAXN][MAXN], 
+                                    ^
+<kernel>:4:25: error: use of undeclared identifier 'MAXN'
+                  __global uint32_t C[MAXN][MAXN], const int N)
+                                      ^
+<kernel>:4:31: error: use of undeclared identifier 'MAXN'
+                  __global uint32_t C[MAXN][MAXN], const int N)
+                                            ^
+<kernel>:4:23: error: parameter may not be qualified with an address space
+                  __global uint32_t C[MAXN][MAXN], const int N)
+                                    ^

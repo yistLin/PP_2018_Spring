@@ -1,0 +1,23 @@
+1 platform found
+Platform Name NVIDIA CUDA
+Platform Vendor NVIDIA Corporation
+Platform Version OpenCL 1.2 CUDA 7.5.23
+Platform Profile FULL_PROFILE
+3 Devices
+0 CPU Devices
+3 GPU Devices
+Device name GeForce GTX 980 Ti
+Global memory size 6442254336
+Local memory size 49152
+# of compute units 22
+max # of work items in a work group 1024
+Device name GeForce GTX 970
+Global memory size 4294770688
+Local memory size 49152
+# of compute units 13
+max # of work items in a work group 1024
+Device name GeForce GTX 770
+Global memory size 2147287040
+Local memory size 49152
+# of compute units 8
+max # of work items in a work group 1024
