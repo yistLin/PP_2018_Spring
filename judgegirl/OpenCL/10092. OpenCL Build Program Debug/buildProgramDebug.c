@@ -2,82 +2,61 @@
 #include <assert.h>
 #include <CL/cl.h>
 
-#define MAXB 256
-#define MAXPLATFORM 5
-#define MAXDEVICE 10
+#define MAXGPU 10
+#define MAXK 1024
 
 int main(int argc, char *argv[]) {
-    cl_platform_id platform_id[MAXPLATFORM];
-    cl_device_id device_id[MAXDEVICE];
+    char kernelFileName[MAXK];
+    int ret = scanf("%s", kernelFileName);
+
+    cl_int status;
+    cl_platform_id platform_id;
     cl_uint platform_id_got;
-    clGetPlatformIDs(MAXPLATFORM, platform_id, &platform_id_got);
-    printf("%u platform found\n", platform_id_got);
+    status = clGetPlatformIDs(1, &platform_id, &platform_id_got);
+    assert(status == CL_SUCCESS && platform_id_got == 1);
+    // printf("%d platform found\n", platform_id_got);
 
-    /* getinfo */
-    for (int i = 0; i < platform_id_got; i++) {
-        char buffer[MAXB];
-        size_t length;
-        clGetPlatformInfo(platform_id[i], CL_PLATFORM_NAME,
-                          MAXB, buffer, &length);
-        buffer[length] = '\0';
-        printf("Platform Name %s\n", buffer);
+    cl_device_id GPU[MAXGPU];
+    cl_uint GPU_id_got;
+    status = clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_GPU, MAXGPU, GPU, &GPU_id_got);
+    assert(status == CL_SUCCESS);
+    // printf("There are %d GPU devices\n", GPU_id_got);
 
-        clGetPlatformInfo(platform_id[i], CL_PLATFORM_VENDOR,
-                          MAXB, buffer, &length);
-        buffer[length] = '\0';
-        printf("Platform Vendor %s\n", buffer);
+    /* getcontext */
+    cl_context context = clCreateContext(NULL, GPU_id_got, GPU, NULL, NULL, &status);
+    assert(status == CL_SUCCESS);
 
-        clGetPlatformInfo(platform_id[i], CL_PLATFORM_VERSION,
-                          MAXB, buffer, &length);
-        buffer[length] = '\0';
-        printf("OpenCL Version %s\n", buffer);
+    /* commandqueue */
+    cl_command_queue commandQueue = clCreateCommandQueue(context, GPU[0], 0, &status);
+    assert(status == CL_SUCCESS);
 
-        clGetPlatformInfo(platform_id[i], CL_PLATFORM_PROFILE,
-                          MAXB, buffer, &length);
-        buffer[length] = '\0';
-        printf("Platform Profile %s\n", buffer);
+    /* kernelsource */
+    FILE *kernelfp = fopen(kernelFileName, "r");
+    assert(kernelfp != NULL);
+    char kernelBuffer[MAXK];
+    const char *constKernelSource = kernelBuffer;
+    size_t kernelLength = fread(kernelBuffer, 1, MAXK, kernelfp);
+    // printf("The size of kernel source is %zu\n", kernelLength);
+    cl_program program = clCreateProgramWithSource(context, 1, &constKernelSource, &kernelLength, &status);
+    assert(status == CL_SUCCESS);
 
-        /* getDeviceID */
-        cl_device_id devices[MAXDEVICE];
-        cl_uint device_id_got;
+    /* buildprogram */
+    status = clBuildProgram(program, GPU_id_got, GPU, NULL, NULL, NULL);
+    // assert(status == CL_SUCCESS);
+    // printf("Build program completes\n");
 
-        clGetDeviceIDs(platform_id[i], CL_DEVICE_TYPE_ALL,
-                       MAXDEVICE, devices, &device_id_got);
-        printf("%u Devices\n", device_id_got);
+    /* buildProgramInfo */
+    char buildLog[4096];
+    size_t buildLogLength;
+    status = clGetProgramBuildInfo(program, GPU[0], CL_PROGRAM_BUILD_LOG, (size_t)4096, (void *)buildLog, &buildLogLength);
+    assert(status == CL_SUCCESS);
 
-        clGetDeviceIDs(platform_id[i], CL_DEVICE_TYPE_CPU,
-                       MAXDEVICE, devices, &device_id_got);
-        printf("%u CPU Devices\n", device_id_got);
+    buildLog[buildLogLength] = '\0';
+    printf("%s", buildLog);
 
-        clGetDeviceIDs(platform_id[i], CL_DEVICE_TYPE_GPU,
-                       MAXDEVICE, devices, &device_id_got);
-        printf("%u GPU Devices\n", device_id_got);
-
-        /* getDeviceInfo */
-        for (int j = 0; j < device_id_got; j++) {
-            clGetDeviceInfo(devices[j], CL_DEVICE_NAME,
-                            MAXB, buffer, &length);
-            buffer[length] = '\0';
-            printf("Device name %s\n", buffer);
-
-            cl_ulong number;
-            clGetDeviceInfo(devices[j], CL_DEVICE_GLOBAL_MEM_SIZE,
-                            sizeof(cl_ulong), &number, NULL);
-            printf("Global memory size %lld\n", (long long)number);
-
-            clGetDeviceInfo(devices[j], CL_DEVICE_LOCAL_MEM_SIZE,
-                            sizeof(cl_ulong), &number, NULL);
-            printf("Local memory size %lld\n", (long long)number);
-
-            clGetDeviceInfo(devices[j], CL_DEVICE_MAX_COMPUTE_UNITS,
-                            sizeof(cl_ulong), &number, NULL);
-            printf("# of compute units %lld\n", (long long)number);
-
-            clGetDeviceInfo(devices[j], CL_DEVICE_MAX_WORK_GROUP_SIZE,
-                            sizeof(cl_ulong), &number, NULL);
-            printf("max # of work items in a work group %lld\n", (long long)number);
-        }
-    }
+    clReleaseContext(context);
+    clReleaseCommandQueue(commandQueue);
+    clReleaseProgram(program);
 
     return 0;
 }
