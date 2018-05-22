@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -std=c99 -O2
+CFLAGS = -std=c99 -O2 -fopenmp
 OBJS = dotProduct-cl
 
 all: $(OBJS)
