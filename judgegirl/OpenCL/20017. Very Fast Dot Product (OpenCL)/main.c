@@ -2,11 +2,11 @@
 #include <assert.h>
 #include <inttypes.h>
 #include <CL/cl.h>
-#include "utils.h"
 
 #define MAXGPU 1
-#define MAXK 1024
-#define MAXN 16777216
+#define MAXTHREAD 512
+#define MAXK 4096
+#define MAXN 67108864
 
 int main(int argc, char *argv[]) {
     cl_int status;
@@ -46,14 +46,16 @@ int main(int argc, char *argv[]) {
     assert(status == CL_SUCCESS);
 
     /* vector */
-    cl_uint* A = (cl_uint*)malloc(MAXN * sizeof(cl_uint));
+    int local_work_size = 512;
+    size_t buf_size = (MAXN / MAXTHREAD) / local_work_size;
+    cl_uint* A = (cl_uint*)malloc(buf_size * sizeof(cl_uint));
     assert(A != NULL);
 
     /* createbuffer */
-    cl_mem bufferA = clCreateBuffer(context, CL_MEM_WRITE_ONLY | CL_MEM_USE_HOST_PTR, MAXN * sizeof(cl_uint), A, &status);
+    cl_mem bufferA = clCreateBuffer(context, CL_MEM_WRITE_ONLY | CL_MEM_USE_HOST_PTR, buf_size * sizeof(cl_uint), A, &status);
     assert(status == CL_SUCCESS);
 
-    int N, local_work_size = 1024;
+    int N;
     uint32_t key1, key2;
 
     while (scanf("%d %" PRIu32 " %" PRIu32, &N, &key1, &key2) == 3) {
@@ -69,16 +71,17 @@ int main(int argc, char *argv[]) {
         assert(status == CL_SUCCESS);
 
         size_t expanded_N = (N-1) / local_work_size + 1;
-        expanded_N = (expanded_N % 256 == 0) ? expanded_N : ((expanded_N / 256) + 1) * 256;
-        size_t globalThreads[] = {(size_t)expanded_N};
-        size_t localThreads[] = {256};
+        expanded_N = (expanded_N % MAXTHREAD == 0) ? expanded_N : ((expanded_N / MAXTHREAD) + 1) * MAXTHREAD;
+        size_t globalThreads[] = {expanded_N};
+        size_t localThreads[] = {MAXTHREAD};
         status = clEnqueueNDRangeKernel(commandQueue, kernel, 1, NULL, globalThreads, localThreads, 0, NULL, NULL);
         assert(status == CL_SUCCESS);
 
-        clEnqueueReadBuffer(commandQueue, bufferA, CL_TRUE, 0, expanded_N * sizeof(cl_uint), A, 0, NULL, NULL);
+        size_t nb_workgroup = expanded_N / MAXTHREAD;
+        clEnqueueReadBuffer(commandQueue, bufferA, CL_TRUE, 0, nb_workgroup * sizeof(cl_uint), A, 0, NULL, NULL);
 
         uint32_t sum = 0;
-        for (int i = 0; i < expanded_N; i++)
+        for (int i = 0; i < nb_workgroup; i++)
             sum += A[i];
 
         printf("%" PRIu32 "\n", sum);

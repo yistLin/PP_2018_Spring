@@ -1,18 +1,35 @@
+static inline unsigned rotate_left(const unsigned val, const unsigned key) {
+    return (val << key) | (val >> (32 - key));
+}
+
+static inline unsigned encrypt(const unsigned val, const unsigned key) {
+    return (rotate_left(val, key & 31) + key) ^ key;
+}
+
 __kernel void vec_dot(
     const unsigned key1,
     const unsigned key2,
     __global unsigned *sum,
     const int local_work_size,
-    const int N) {
+    const int N
+) {
+    __local unsigned tmpsum[512];
 
-    unsigned rotate_left, a, b, tmp = 0;
+    unsigned tmp = 0;
     int base = get_global_id(0) * local_work_size;
     for (int i = base; i < N && (i-base) < local_work_size; i++) {
-        rotate_left = (i << (key1 & 31)) | (i >> (32 - (key1 & 31)));
-        a = (rotate_left + key1) ^ key1;
-        rotate_left = (i << (key2 & 31)) | (i >> (32 - (key2 & 31)));
-        b = (rotate_left + key2) ^ key2;
-        tmp += a * b;
+        tmp += encrypt(i, key1) * encrypt(i, key2);
     }
-    sum[get_global_id(0)] = tmp;
+    tmpsum[get_local_id(0)] = tmp;
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    #pragma unroll 9
+    for (int i = (512 / 2); i > 0; i /= 2) {
+        if (get_local_id(0) < i)
+            tmpsum[get_local_id(0)] += tmpsum[get_local_id(0)+i];
+        barrier(CLK_LOCAL_MEM_FENCE);
+    }
+
+    if (get_local_id(0) == 0)
+        sum[get_group_id(0)] = tmpsum[0];
 }
