@@ -11,35 +11,46 @@ import java.util.*;
 
 public class Average extends Configured implements Tool {
 
-    public static class Map extends MapReduceBase
-            implements Mapper<LongWritable, Text, Text, IntPair> {
-        public void map(LongWritable key, Text value,
-                OutputCollector<Text, IntPair> output, Reporter reporter)
-                throws IOException {
+    public static class Map extends MapReduceBase implements Mapper<LongWritable, Text, Text, IntPair> {
+        public void map(LongWritable key, Text value, OutputCollector<Text, IntPair> output, Reporter reporter) throws IOException {
+            // TODO: Task I, transform a line into <Key, IntPair> as you wish
             StringTokenizer stk = new StringTokenizer(value.toString(), " ");
 
-            while (stk.hasMoreTokens()) {
-                // TODO: Task I, transform a line into <Key, IntPair> as you wish
+            Text studentName = new Text();
+            if (stk.hasMoreTokens())
+                studentName = new Text(stk.nextToken());
+
+            IntPair scorePair = new IntPair(0, 1);
+            if (stk.hasMoreTokens()) {
+                scorePair = new IntPair(Integer.parseInt(stk.nextToken()), 1);
             }
+
+            output.collect(studentName, scorePair);
         }
     }
 
-    public static class Combine extends MapReduceBase
-            implements Reducer<Text, IntPair, Text, IntPair> {
-        public void reduce(Text key, Iterator<IntPair> values,
-                OutputCollector<Text, IntPair> output, Reporter reporter)
-                throws IOException {
+    public static class Combine extends MapReduceBase implements Reducer<Text, IntPair, Text, IntPair> {
+        public void reduce(Text key, Iterator<IntPair> values, OutputCollector<Text, IntPair> output, Reporter reporter) throws IOException {
             // TODO: Task II, collect the part of Iterator<IntPair>,
             //             and then store them into <Key, IntPair>
         }
     }
 
-    public static class Reduce extends MapReduceBase
-            implements Reducer<Text, IntPair, Text, DoubleWritable> {
-        public void reduce(Text key, Iterator<IntPair> values,
-                OutputCollector<Text, DoubleWritable> output, Reporter reporter)
-                throws IOException {
+    public static class Reduce extends MapReduceBase implements Reducer<Text, IntPair, Text, DoubleWritable> {
+        public void reduce(Text key, Iterator<IntPair> values, OutputCollector<Text, DoubleWritable> output, Reporter reporter) throws IOException {
             // TODO: Task I, transform <Key, Iterator<IntPair>> into <Key, Double>
+            int scoreSum = 0;
+            int numberOfScores = 0;
+
+            while (values.hasNext()) {
+                IntPair nextPair = values.next();
+                scoreSum += nextPair.getFirst();
+                numberOfScores += nextPair.getSecond();
+            }
+
+            double averageScore = (double)scoreSum / (double)numberOfScores;
+
+            output.collect(key, new DoubleWritable(averageScore));
         }
     }
 
@@ -53,7 +64,6 @@ public class Average extends Configured implements Tool {
             char c = key.toString().charAt(0);
             return c % numPartitions;
         }
-
     }
 
     @Override
@@ -96,8 +106,7 @@ public class Average extends Configured implements Tool {
 
     public static void main(String[] args) throws Exception {
         if (args.length != 2) {
-            System.err.println(
-                    "Usage: hadoop jar Average.jar WordCount <HDFS-INPUT-PATH> <HDFS-OUTPUT-PATH>");
+            System.err.println("Usage: hadoop jar Average.jar WordCount <HDFS-INPUT-PATH> <HDFS-OUTPUT-PATH>");
             System.exit(1);
         }
 
@@ -105,4 +114,3 @@ public class Average extends Configured implements Tool {
         System.exit(res);
     }
 }
-
