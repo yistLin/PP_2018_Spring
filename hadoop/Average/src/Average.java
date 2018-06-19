@@ -32,7 +32,17 @@ public class Average extends Configured implements Tool {
     public static class Combine extends MapReduceBase implements Reducer<Text, IntPair, Text, IntPair> {
         public void reduce(Text key, Iterator<IntPair> values, OutputCollector<Text, IntPair> output, Reporter reporter) throws IOException {
             // TODO: Task II, collect the part of Iterator<IntPair>,
-            //             and then store them into <Key, IntPair>
+            //       and then store them into <Key, IntPair>
+            int scoreSum = 0;
+            int numberOfScores = 0;
+
+            while (values.hasNext()) {
+                IntPair nextPair = values.next();
+                scoreSum += nextPair.getFirst();
+                numberOfScores += nextPair.getSecond();
+            }
+
+            output.collect(key, new IntPair(scoreSum, numberOfScores));
         }
     }
 
